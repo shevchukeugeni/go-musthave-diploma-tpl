@@ -39,7 +39,7 @@ func NewWorker(logger *zap.Logger, db *sql.DB, accrualSystemAddr string, order s
 
 func (w *Worker) Run(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Second)
 	for {
 		select {
 		case <-ctx.Done():
