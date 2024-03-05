@@ -18,12 +18,12 @@ func NewRepository(db *sql.DB, orders store.Order) store.Withdrawal {
 	return &repo{db: db, orders: orders}
 }
 
-func (repo *repo) CreateWithdrawal(ctx context.Context, orderNum, userId string, sum float64) error {
-	if userId == "" {
+func (repo *repo) CreateWithdrawal(ctx context.Context, orderNum, userID string, sum float64) error {
+	if userID == "" {
 		return errors.New("repository: incorrect parameters")
 	}
 
-	balance, err := repo.GetBalance(ctx, userId)
+	balance, err := repo.GetBalance(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (repo *repo) CreateWithdrawal(ctx context.Context, orderNum, userId string,
 	}
 
 	_, err = repo.db.ExecContext(ctx,
-		"INSERT INTO withdrawals(user_id, number, sum) VALUES ($1, $2, $3)", userId, orderNum, sum)
+		"INSERT INTO withdrawals(user_id, number, sum) VALUES ($1, $2, $3)", userID, orderNum, sum)
 
 	return err
 }
@@ -50,6 +50,9 @@ func (repo *repo) GetBalance(ctx context.Context, userID string) (*types.UserBal
 	}
 
 	wtdrwls, err := repo.GetWithdrawalsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, wtdrw := range wtdrwls {
 		balance.Withdrawn += wtdrw.Sum
@@ -80,6 +83,10 @@ func (repo *repo) GetWithdrawalsByUser(ctx context.Context, userID string) ([]ty
 			return nil, err
 		}
 		ret = append(ret, wtdrw)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil

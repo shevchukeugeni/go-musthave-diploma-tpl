@@ -17,17 +17,17 @@ func NewRepository(db *sql.DB) store.Order {
 	return &repo{db: db}
 }
 
-func (repo *repo) CreateOrder(ctx context.Context, orderNum, userId string) error {
-	if userId == "" {
+func (repo *repo) CreateOrder(ctx context.Context, orderNum, userID string) error {
+	if userID == "" {
 		return errors.New("repository: incorrect parameters")
 	}
 
-	ret := types.Order{Number: orderNum}
+	ret := types.Order{}
 	err := repo.db.QueryRowContext(ctx, "SELECT user_id FROM orders WHERE number=$1", orderNum).Scan(
 		&ret.UserID)
 	if !errors.Is(err, sql.ErrNoRows) {
 		if err == nil {
-			if ret.UserID == userId {
+			if ret.UserID == userID {
 				return types.ErrOrderAlreadyCreatedByUser
 			} else {
 				return types.ErrOrderAlreadyCreatedByAnother
@@ -38,7 +38,7 @@ func (repo *repo) CreateOrder(ctx context.Context, orderNum, userId string) erro
 	}
 
 	_, err = repo.db.ExecContext(ctx,
-		"INSERT INTO orders(number, user_id, status) VALUES ($1, $2, $3)", orderNum, userId, types.New)
+		"INSERT INTO orders(number, user_id, status) VALUES ($1, $2, $3)", orderNum, userID, types.New)
 	if err != nil {
 		return err
 	}
@@ -54,14 +54,14 @@ func (repo *repo) UpdateOrder(ctx context.Context, orderNum, status string, accr
 	return nil
 }
 
-func (repo *repo) GetOrdersByUser(ctx context.Context, userId string) ([]types.Order, error) {
-	if userId == "" {
+func (repo *repo) GetOrdersByUser(ctx context.Context, userID string) ([]types.Order, error) {
+	if userID == "" {
 		return nil, errors.New("repository: incorrect parameters")
 	}
 
 	ret := []types.Order{}
 	rows, err := repo.db.QueryContext(ctx,
-		"SELECT number, status, accrual, uploaded_at FROM orders WHERE user_id=$1 ORDER BY uploaded_at DESC", userId)
+		"SELECT number, status, accrual, uploaded_at FROM orders WHERE user_id=$1 ORDER BY uploaded_at DESC", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,25 +78,29 @@ func (repo *repo) GetOrdersByUser(ctx context.Context, userId string) ([]types.O
 		ret = append(ret, order)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
-func (repo *repo) GetProcessedOrdersByUser(ctx context.Context, userId string) ([]types.Order, error) {
-	if userId == "" {
+func (repo *repo) GetProcessedOrdersByUser(ctx context.Context, userID string) ([]types.Order, error) {
+	if userID == "" {
 		return nil, errors.New("repository: incorrect parameters")
 	}
 
 	ret := []types.Order{}
 	rows, err := repo.db.QueryContext(ctx,
 		"SELECT number, accrual, uploaded_at FROM orders WHERE user_id=$1 and status=$2 ORDER BY uploaded_at DESC",
-		userId, types.Processed)
+		userID, types.Processed)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		order := types.Order{UserID: userId}
+		order := types.Order{UserID: userID}
 		var acc sql.NullFloat64
 		err := rows.Scan(&order.Number, &acc, &order.UploadedAt)
 		if err != nil {
@@ -104,6 +108,10 @@ func (repo *repo) GetProcessedOrdersByUser(ctx context.Context, userId string) (
 		}
 		order.Accrual = acc.Float64
 		ret = append(ret, order)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil
@@ -126,6 +134,10 @@ func (repo *repo) GetPendingOrdersNumbers(ctx context.Context) ([]types.Order, e
 			return nil, err
 		}
 		ret = append(ret, order)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil
