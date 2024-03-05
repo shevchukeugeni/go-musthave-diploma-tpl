@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -60,10 +61,10 @@ func main() {
 	withdrawalRepo := withdrawal.NewRepository(db, orderRepo)
 
 	client := resty.New()
-
 	updater := worker.NewWorker(logger, db, accrualSystemAddr, orderRepo, client)
 
-	go updater.Run(ctx)
+	var wg sync.WaitGroup
+	go updater.Run(ctx, &wg)
 
 	router := server.SetupRouter(logger, userRepo, orderRepo, withdrawalRepo)
 
@@ -74,4 +75,5 @@ func main() {
 	}
 
 	cancelCtx()
+	wg.Wait()
 }

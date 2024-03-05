@@ -268,6 +268,8 @@ func (ro *router) withdrawalsList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(ret)
+
 	if len(ret) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return

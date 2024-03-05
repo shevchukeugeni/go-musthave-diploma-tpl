@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -36,11 +37,14 @@ func NewWorker(logger *zap.Logger, db *sql.DB, accrualSystemAddr string, order s
 	}
 }
 
-func (w *Worker) Run(ctx context.Context) {
+func (w *Worker) Run(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
 	ticker := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Done()
+			return
 		case <-ticker.C:
 			w.logger.Info("worker started")
 			orders, err := w.order.GetPendingOrdersNumbers(ctx)
