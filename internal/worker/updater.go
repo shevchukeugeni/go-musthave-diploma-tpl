@@ -103,7 +103,7 @@ func (w *Worker) requestAccrual(number string) (*resty.Response, error) {
 	res := new(resty.Response)
 	var innerErr error
 	err := withRetry(func() error {
-		res, innerErr = req.Get(fmt.Sprintf("http://%s/api/orders/%s", w.accrualSystemAddr, number))
+		res, innerErr = req.Get(fmt.Sprintf("%s/api/orders/%s", w.accrualSystemAddr, number))
 		if innerErr != nil {
 			return innerErr
 		}
