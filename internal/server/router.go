@@ -281,7 +281,7 @@ func (ro *router) withdrawalsList(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(ret)
+	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		http.Error(w, "Can't marshal data: "+err.Error(), http.StatusInternalServerError)
 		return
