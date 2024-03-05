@@ -239,6 +239,8 @@ func (ro *router) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(req)
+
 	err = types.ValidateOrder(req.Order)
 	if err != nil || req.Sum == 0 {
 		http.Error(w, "Order number validation failed", http.StatusUnprocessableEntity)
