@@ -7,10 +7,14 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 
 	"github.com/shevchukeugeni/gofermart/internal/server"
+	"github.com/shevchukeugeni/gofermart/internal/store/order"
 	"github.com/shevchukeugeni/gofermart/internal/store/postgres"
+	"github.com/shevchukeugeni/gofermart/internal/store/user"
+	"github.com/shevchukeugeni/gofermart/internal/store/withdrawal"
 	"github.com/shevchukeugeni/gofermart/internal/worker"
 )
 
@@ -25,7 +29,7 @@ func init() {
 		flagRunAddr = envRunAddr
 	}
 
-	if envDBURL := os.Getenv("DATABASE_DSN"); envDBURL != "" {
+	if envDBURL := os.Getenv("DATABASE_URI"); envDBURL != "" {
 		dbURI = envDBURL
 	}
 
@@ -35,12 +39,6 @@ func init() {
 }
 
 func main() {
-	//NOTE: Greetings to the inspector,
-	//This version is a simple template that I plan to beef up in the coming days. Actually I am only interested in one thing here.
-	//I've used middleware of chi library with token generation via lestratt-go library to check tokens.
-	//Is it necessary to implement session storage and refresh token generation in this project?
-	//In the metrics service that I performed during the first part of the training there was no authorization via jwt, so I'm clarifying.
-
 	flag.Parse()
 
 	logger, err := zap.NewDevelopment()
@@ -51,17 +49,23 @@ func main() {
 
 	db, err := postgres.NewPostgresDB(postgres.Config{URL: dbURI})
 	if err != nil {
-		logger.Error("failed to initialize db: " + err.Error())
+		logger.Fatal("failed to initialize db: " + err.Error())
 	}
 	defer db.Close()
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 
-	updater := worker.NewWorker(logger, db, accrualSystemAddr)
+	userRepo := user.NewRepository(db)
+	orderRepo := order.NewRepository(db)
+	withdrawalRepo := withdrawal.NewRepository(db, orderRepo)
+
+	client := resty.New()
+
+	updater := worker.NewWorker(logger, db, accrualSystemAddr, orderRepo, client)
 
 	go updater.Run(ctx)
 
-	router := server.SetupRouter(logger)
+	router := server.SetupRouter(logger, userRepo, orderRepo, withdrawalRepo)
 
 	logger.Info("Running server on", zap.String("address", flagRunAddr))
 	err = http.ListenAndServe(flagRunAddr, router)
