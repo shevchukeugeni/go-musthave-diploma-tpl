@@ -178,8 +178,6 @@ func (ro *router) orders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(userID)
-
 	ret, err := ro.orderRepo.GetOrdersByUser(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Unable to get orders: "+err.Error(), http.StatusInternalServerError)
@@ -190,8 +188,6 @@ func (ro *router) orders(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-
-	fmt.Println(ret)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -239,15 +235,11 @@ func (ro *router) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(req)
-
 	err = types.ValidateOrder(req.Order)
 	if err != nil || req.Sum == 0 {
 		http.Error(w, "Order number validation failed", http.StatusUnprocessableEntity)
 		return
 	}
-
-	fmt.Println(req)
 
 	err = ro.withdrawalRepo.CreateWithdrawal(r.Context(), req.Order, userID, req.Sum)
 	switch {
@@ -276,11 +268,15 @@ func (ro *router) withdrawalsList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(ret)
-
 	if len(ret) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
+	}
+
+	var resp []types.WithdrawalResponse
+
+	for _, order := range ret {
+		resp = append(resp, types.WithdrawalResponse{Order: order.Number, Sum: order.Sum, ProcessedAt: order.ProcessedAt})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
