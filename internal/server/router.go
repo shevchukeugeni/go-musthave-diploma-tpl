@@ -178,6 +178,8 @@ func (ro *router) orders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(userID)
+
 	ret, err := ro.orderRepo.GetOrdersByUser(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Unable to get orders: "+err.Error(), http.StatusInternalServerError)
@@ -188,6 +190,8 @@ func (ro *router) orders(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	fmt.Println(ret)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -240,6 +244,8 @@ func (ro *router) withdraw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Order number validation failed", http.StatusUnprocessableEntity)
 		return
 	}
+
+	fmt.Println(req)
 
 	err = ro.withdrawalRepo.CreateWithdrawal(r.Context(), req.Order, userID, req.Sum)
 	switch {
